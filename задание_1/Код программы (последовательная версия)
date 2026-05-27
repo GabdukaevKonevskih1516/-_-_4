@@ -1,0 +1,22 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define N 100000000
+
+int main() {
+    double* arr = (double*)malloc(N * sizeof(double));
+    srand(time(NULL));
+    for (int i = 0; i < N; i++) arr[i] = rand() % 100;
+    
+    clock_t start = clock();
+    double sum = 0.0;
+    for (int i = 0; i < N; i++) sum += arr[i];
+    clock_t end = clock();
+    
+    printf("Sum = %.6f\n", sum);
+    printf("Sequential time = %.6f sec\n", (double)(end - start) / CLOCKS_PER_SEC);
+    
+    free(arr);
+    return 0;
+}
