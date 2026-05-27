@@ -5,6 +5,10 @@
 
 #define N 100000000
 
+double f(double x, double y) {
+    return x*x + 2*y;
+}
+
 int in_region(double x, double y) {
     double y_low = x*x - 1;
     double y_high = x + 1;
@@ -13,23 +17,35 @@ int in_region(double x, double y) {
 
 int main() {
     srand(time(NULL));
+    
     double x_min = -1.0, x_max = 2.0;
     double y_min = -2.0, y_max = 3.0;
     double area = (x_max - x_min) * (y_max - y_min);
     
     clock_t start = clock();
-    int hits = 0;
+    
+    double sum_f = 0.0;
     for (int i = 0; i < N; i++) {
         double x = x_min + (double)rand() / RAND_MAX * (x_max - x_min);
         double y = y_min + (double)rand() / RAND_MAX * (y_max - y_min);
-        if (in_region(x, y)) hits++;
+        if (in_region(x, y)) {
+            sum_f += f(x, y);
+        }
     }
-    clock_t end = clock();
     
-    double integral = area * (double)hits / N;
+    clock_t end = clock();
+    double time = (double)(end - start) / CLOCKS_PER_SEC;
+    
+    double integral = area * sum_f / N;
+    double exact = 9.0;
+    double error = fabs(integral - exact);
+    
+    printf("Number of trials: %d\n", N);
+    printf("Sum of f(x,y) in region: %.6f\n", sum_f);
+    printf("Area: %.6f\n", area);
     printf("Integral = %.6f (exact = 9)\n", integral);
-    printf("Error = %.6e\n", fabs(integral - 9));
-    printf("Sequential time = %.6f sec\n", (double)(end - start) / CLOCKS_PER_SEC);
+    printf("Error = %.6e (%.2f%%)\n", error, error / exact * 100);
+    printf("Sequential time = %.6f sec\n", time);
     
     return 0;
 }
