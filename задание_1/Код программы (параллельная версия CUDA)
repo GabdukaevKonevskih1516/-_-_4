@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#include <time.h>
+
+#define N 100000000
+#define BLOCK_SIZE 256
+
+__global__ void sum_kernel(double* d_arr, double* d_sum, int n) {
+    __shared__ double cache[BLOCK_SIZE];
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    int cache_idx = threadIdx.x;
+    
+    double temp = (tid < n) ? d_arr[tid] : 0.0;
+    cache[cache_idx] = temp;
+    __syncthreads();
+    
+    for (int s = BLOCK_SIZE / 2; s > 0; s >>= 1) {
+        if (cache_idx < s) cache[cache_idx] += cache[cache_idx + s];
+        __syncthreads();
+    }
+    
+    if (cache_idx == 0) d_sum[blockIdx.x] = cache[0];
+}
+
+int main() {
+    int num_blocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    double *h_arr = (double*)malloc(N * sizeof(double));
+    double *h_sum = (double*)malloc(num_blocks * sizeof(double));
+    
+    srand(time(NULL));
+    for (int i = 0; i < N; i++) h_arr[i] = rand() % 100;
+    
+    double *d_arr, *d_sum;
+    cudaMalloc(&d_arr, N * sizeof(double));
+    cudaMalloc(&d_sum, num_blocks * sizeof(double));
+    cudaMemcpy(d_arr, h_arr, N * sizeof(double), cudaMemcpyHostToDevice);
+    
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    
+    sum_kernel<<<num_blocks, BLOCK_SIZE>>>(d_arr, d_sum, N);
+    
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    
+    cudaMemcpy(h_sum, d_sum, num_blocks * sizeof(double), cudaMemcpyDeviceToHost);
+    
+    double total_sum = 0.0;
+    for (int i = 0; i < num_blocks; i++) total_sum += h_sum[i];
+    
+    float time_ms;
+    cudaEventElapsedTime(&time_ms, start, stop);
+    
+    printf("Sum = %.6f\n", total_sum);
+    printf("CUDA time = %.6f sec\n", time_ms / 1000.0);
+    
+    free(h_arr); free(h_sum);
+    cudaFree(d_arr); cudaFree(d_sum);
+    return 0;
+}
